@@ -322,6 +322,8 @@ fn main() -> Result<(), io::Error> {
                     }
                 }
             }
+        } else {
+            app.refresh();
         }
     }
 
