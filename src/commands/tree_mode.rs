@@ -75,7 +75,7 @@ pub fn show_tree(filter: &Option<String>) {
         }
 
         // If filter is set, check if this process or any descendant matches
-        if let Some(ref keyword) = filter_lower {
+        if let Some(keyword) = filter_lower.as_deref() {
             if !node.name.to_lowercase().contains(keyword)
                 && !has_matching_descendant(node.pid, &children_map, &proc_map, keyword)
             {

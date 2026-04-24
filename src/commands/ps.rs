@@ -6,7 +6,7 @@ pub fn list_processes(filter: &Option<String>, sort_by: &str, limit: Option<usiz
     let mut procs = collect_processes(&mut sys);
 
     // Apply filter
-    if let Some(ref keyword) = filter {
+    if let Some(keyword) = filter {
         let lower = keyword.to_lowercase();
         procs.retain(|p| p.name.to_lowercase().contains(&lower) || p.pid.to_string().contains(&lower));
     }
