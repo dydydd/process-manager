@@ -173,12 +173,12 @@ fn format_mem(bytes: u64) -> String {
 
 fn status_str(s: &ProcessStatus) -> &'static str {
     match s {
-        ProcessStatus::Run => "R",
-        ProcessStatus::Sleep => "S",
-        ProcessStatus::Idle => "I",
-        ProcessStatus::Stop => "T",
-        ProcessStatus::Zombie => "Z",
-        _ => "?",
+        ProcessStatus::Run => "Running",
+        ProcessStatus::Sleep => "Sleeping",
+        ProcessStatus::Idle => "Idle",
+        ProcessStatus::Stop => "Stopped",
+        ProcessStatus::Zombie => "Zombie",
+        _ => "Unknown",
     }
 }
 
@@ -242,7 +242,7 @@ fn ui(frame: &mut Frame, app: &App) {
     let widths = [
         Constraint::Length(7),
         Constraint::Length(12),
-        Constraint::Length(8),
+        Constraint::Length(10),
         Constraint::Length(7),
         Constraint::Length(10),
         Constraint::Min(20),
