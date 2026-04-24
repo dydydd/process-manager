@@ -1,4 +1,4 @@
-use std::{io, time::Duration, cmp::Ordering};
+use std::{io, time::Duration, cmp::Ordering, collections::HashMap};
 use crossterm::{
     event::{self, Event, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -11,7 +11,7 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Row, Table, TableState, Paragraph},
     Terminal, Frame,
 };
-use sysinfo::{Pid, ProcessStatus, System};
+use sysinfo::{Pid, ProcessStatus, System, Users};
 
 #[derive(Clone)]
 struct ProcEntry {
@@ -31,6 +31,7 @@ enum SortField { Cpu, Mem, Name, Pid, User }
 struct App {
     sys: System,
     procs: Vec<ProcEntry>,
+    uid_to_name: HashMap<String, String>,
     sort: SortField,
     selected: usize,
     search: String,
@@ -47,6 +48,7 @@ impl App {
         let mut app = Self {
             sys: System::new(),
             procs: Vec::new(),
+            uid_to_name: HashMap::new(),
             sort: SortField::Cpu,
             selected: 0,
             search: String::new(),
@@ -68,8 +70,19 @@ impl App {
         self.used_mem = self.sys.used_memory();
         self.task_count = self.sys.processes().len();
 
+        // Build uid -> username map
+        self.uid_to_name.clear();
+        let mut users = Users::new();
+        users.refresh();
+        for user in users.iter() {
+            self.uid_to_name.insert(user.id().to_string(), user.name().to_string());
+        }
+
         self.procs.clear();
         for (pid, p) in self.sys.processes() {
+            let user = p.user_id()
+                .and_then(|uid| self.uid_to_name.get(&uid.to_string()).cloned())
+                .unwrap_or_default();
             self.procs.push(ProcEntry {
                 pid: pid.as_u32(),
                 ppid: p.parent().map(|p| p.as_u32()).unwrap_or(0),
@@ -78,7 +91,7 @@ impl App {
                 mem: p.memory(),
                 mem_str: format_mem(p.memory()),
                 status: status_str(&p.status()).to_string(),
-                user: p.user_id().map(|u| format!("{:?}", u)).unwrap_or_default(),
+                user,
             });
         }
         self.sort_procs();
