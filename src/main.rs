@@ -80,9 +80,39 @@ impl App {
 
         self.procs.clear();
         for (pid, p) in self.sys.processes() {
-            let user = p.user_id()
-                .and_then(|uid| self.uid_to_name.get(&uid.to_string()).cloned())
-                .unwrap_or_default();
+/// Resolve a UID string to a friendly username.
+/// Handles Windows built-in system accounts that are not in the Users list.
+fn resolve_user(uid_str: &str, uid_map: &HashMap<String, String>) -> String {
+    if let Some(name) = uid_map.get(uid_str) {
+        return name.clone();
+    }
+    // Windows well-known SIDs
+    match uid_str {
+        "S-1-5-18" | "S-1-5-19" => "SYSTEM".into(),
+        "S-1-5-20" => "LOCAL SERVICE".into(),
+        "S-1-5-21" | "S-1-5-22" => "NETWORK SERVICE".into(),
+        _ => {
+            // Extract the last part of SID as a fallback (usually the RID)
+            // e.g., "S-1-5-18" -> just show it, or truncate long SIDs
+            if uid_str.len() > 20 {
+                let parts: Vec<&str> = uid_str.split('-').collect();
+                if let Some(last) = parts.last() {
+                    return last.to_string();
+                }
+            }
+            uid_str.into()
+        }
+    }
+}
+
+fn resolve_user_for_proc(p: &sysinfo::Process, uid_map: &HashMap<String, String>) -> String {
+    p.user_id()
+        .map(|uid| {
+            let s = uid.to_string();
+            resolve_user(&s, uid_map)
+        })
+        .unwrap_or_default()
+}
             self.procs.push(ProcEntry {
                 pid: pid.as_u32(),
                 ppid: p.parent().map(|p| p.as_u32()).unwrap_or(0),
@@ -91,7 +121,7 @@ impl App {
                 mem: p.memory(),
                 mem_str: format_mem(p.memory()),
                 status: status_str(&p.status()).to_string(),
-                user,
+                user: resolve_user_for_proc(p, &self.uid_to_name),
             });
         }
         self.sort_procs();
